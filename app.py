@@ -16,8 +16,7 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    # 1. 強制確保 users 表存在
+    # 用戶表
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -26,39 +25,20 @@ def init_db():
             role VARCHAR(20) DEFAULT 'employee'
         );
     ''')
-    
-    # 2. 強制確保 tasks 表存在
+    # 任務表
     cur.execute('''
         CREATE TABLE IF NOT EXISTS tasks (
             id SERIAL PRIMARY KEY,
             title VARCHAR(100) NOT NULL,
             description TEXT,
-            status VARCHAR(20) DEFAULT 'todo',
-            priority VARCHAR(10) DEFAULT 'medium',
-            assigned_to INTEGER,
+            status VARCHAR(20) DEFAULT 'todo', -- 'todo', 'in_progress', 'done'
+            priority VARCHAR(10) DEFAULT 'medium', -- 'low', 'medium', 'high'
+            assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             due_date DATE
         );
     ''')
-    
-    # 🛠️ 【修正外鍵關聯】主動檢查並補上外鍵關聯線
-    try:
-        cur.execute('''
-            ALTER TABLE tasks 
-            ADD CONSTRAINT fk_tasks_assigned_to 
-            FOREIGN KEY (assigned_to) REFERENCES users(id) 
-            ON DELETE SET NULL;
-        ''')
-        print("成功手動為 tasks 與 users 建立關聯外鍵！")
-    except psycopg2.errors.DuplicateObject:
-        # 如果關聯早就存在，會跳過此錯誤，不影響運行
-        pass
-    except Exception as e:
-        print("關聯建立提示 (可能已存在):", e)
-        
-    conn.commit()
-    
-    # 3. 建立預設帳號
+    # 建立預設帳號
     cur.execute("SELECT * FROM users WHERE username='admin'")
     if not cur.fetchone():
         cur.execute("INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
@@ -126,7 +106,7 @@ LOGIN_HTML = """
 </html>
 """
 
-# 2. 前台員工看板介面 (🛠️ 修正並優化 JS 執行按鈕點擊效能)
+# 2. 前台員工看板介面
 EMPLOYEE_HTML = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -201,8 +181,8 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-white mb-1">{{ task.title }}</h3>
                         <p class="text-xs text-gray-400 leading-relaxed mb-4">{{ task.description or '無描述。' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button onclick="moveTask({{ task.id }}, 'todo')" class="cursor-pointer text-[11px] font-medium p-2 px-3 rounded-xl bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">↩ 退回</button>
-                            <button onclick="moveTask({{ task.id }}, 'done')" class="cursor-pointer text-[11px] font-medium p-2 px-3 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-md">✓ 回報完成</button>
+                            <button onclick="moveTask({{ task.id }}, 'todo')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">↩ 退回</button>
+                            <button onclick="moveTask({{ task.id }}, 'done')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all">✓ 回報完成</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -224,7 +204,7 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-gray-400 mb-1 line-through">{{ task.title }}</h3>
                         <p class="text-xs text-gray-500 leading-relaxed mb-4">{{ task.description or '' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-2 px-3 rounded-xl bg-white/5 text-gray-500 hover:text-amber-400 transition-all">重启任務</button>
+                            <button onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-white/5 text-gray-500 hover:text-amber-400 transition-all">重启任務</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -234,7 +214,6 @@ EMPLOYEE_HTML = """
     </div>
 
     <script>
-        // 🛠️ 修正全域 moveTask 機制，點擊按鈕直接發送非同步狀態變更
         async function moveTask(taskId, newStatus) {
             try {
                 const response = await fetch(`/api/task/${taskId}/status`, {
@@ -252,7 +231,6 @@ EMPLOYEE_HTML = """
             }
         }
         
-        // 🛠️ 安全計數器更新（加上防呆：若節點為空則預設 0，避免 JS 報錯阻塞按鈕）
         function updateCounters() {
             const todoCol = document.getElementById('col-todo');
             const progressCol = document.getElementById('col-in_progress');
@@ -262,15 +240,13 @@ EMPLOYEE_HTML = """
             if(progressCol) document.getElementById('c-progress').innerText = progressCol.children.length;
             if(doneCol) document.getElementById('c-done').innerText = doneCol.children.length;
         }
-        
-        // 頁面載入完成後執行計數
         window.addEventListener('DOMContentLoaded', updateCounters);
     </script>
 </body>
 </html>
 """
 
-# 3. 後台管理控制中心 (新增員工帳號與看管理面板)
+# 3. 後台管理控制中心
 ADMIN_HTML = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -299,18 +275,6 @@ ADMIN_HTML = """
         </div>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="max-w-7xl mx-auto mb-6">
-        {% for category, message in messages %}
-          <div class="p-4 text-xs rounded-xl {% if category == 'success' %}bg-emerald-500/10 border border-emerald-500/20 text-emerald-400{% else %}bg-red-500/10 border border-red-500/20 text-red-400{% endif %}">
-              {{ message }}
-          </div>
-        {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-
     <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div class="glass p-4 rounded-2xl">
             <p class="text-[10px] font-bold text-gray-400 uppercase font-mono">總控任務量</p>
@@ -324,70 +288,49 @@ ADMIN_HTML = """
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div class="space-y-6">
-            <div class="glass p-6 rounded-2xl shadow-xl h-fit">
-                <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
-                    <i class="fa-solid fa-circle-plus text-emerald-400"></i> CREATE_NEW_TASK
-                </h2>
-                <form action="/admin/task/create" method="POST" class="space-y-4 text-xs">
+        <div class="glass p-6 rounded-2xl shadow-xl h-fit">
+            <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
+                <i class="fa-solid fa-circle-plus text-emerald-400"></i> CREATE_NEW_TASK
+            </h2>
+            <form action="/admin/task/create" method="POST" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-gray-400 mb-1">任務主旨 *</label>
+                    <input type="text" name="title" required class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-400 mb-1">細節敘述</label>
+                    <textarea name="description" rows="3" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-bold text-gray-400 mb-1">任務主旨 *</label>
-                        <input type="text" name="title" required class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block font-bold text-gray-400 mb-1">細節敘述</label>
-                        <textarea name="description" rows="3" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500"></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block font-bold text-gray-400 mb-1">優先程度</label>
-                            <select name="priority" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white">
-                                <option value="low">Low</option>
-                                <option value="medium" selected>Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-bold text-gray-400 mb-1">指派擔當者</label>
-                            <select name="assigned_to" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white">
-                                <option value="">-- 待領取 --</option>
-                                {% for emp in employees %}
-                                    <option value="{{ emp.id }}">@{{ emp.username }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                        <label class="block font-bold text-gray-400 mb-1">優先程度</label>
+                        <select name="priority" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block font-bold text-gray-400 mb-1">截止死線</label>
-                        <input type="date" name="due_date" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none">
+                        <label class="block font-bold text-gray-400 mb-1">指派擔當者</label>
+                        <select name="assigned_to" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white">
+                            <option value="">-- 待領取 --</option>
+                            {% for emp in employees %}
+                                <option value="{{ emp.id }}">@{{ emp.username }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <button type="submit" class="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold p-3 rounded-xl transition-all shadow-md">
-                        確認分派任務
-                    </button>
-                </form>
-            </div>
-
-            <div class="glass p-6 rounded-2xl shadow-xl border border-indigo-500/10 h-fit">
-                <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
-                    <i class="fa-solid fa-user-plus text-indigo-400"></i> ADD_NEW_EMPLOYEE
-                </h2>
-                <form action="/admin/employee/create" method="POST" class="space-y-4 text-xs">
-                    <div>
-                        <label class="block font-bold text-gray-400 mb-1">帳號名稱 (Username) *</label>
-                        <input type="text" name="username" required placeholder="例如: member02" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block font-bold text-gray-400 mb-1">初始密碼 (Password) *</label>
-                        <input type="password" name="password" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold p-3 rounded-xl transition-all shadow-md">
-                        創建員工帳戶
-                    </button>
-                </form>
-            </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-400 mb-1">截止死線</label>
+                    <input type="date" name="due_date" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold p-3 rounded-xl transition-all shadow-md">
+                    確認分派任務
+                </button>
+            </form>
         </div>
 
-        <div class="lg:col-span-2 glass p-6 rounded-2xl shadow-xl overflow-x-auto h-fit">
+        <div class="lg:col-span-2 glass p-6 rounded-2xl shadow-xl overflow-x-auto">
             <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
                 <i class="fa-solid fa-list-check text-indigo-400"></i> REALTIME_MONITOR
             </h2>
@@ -481,7 +424,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# 【前台】員工看板路由
+# 【前台】員工看板路由（🛠️ 優化：員工能看到指派給自己、以及完全未指派公開的任務）
 @app.route('/dashboard')
 def employee_dashboard():
     if 'user_id' not in session or session.get('role') != 'employee':
@@ -489,14 +432,18 @@ def employee_dashboard():
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM tasks WHERE assigned_to = %s ORDER BY due_date ASC, id DESC", (session['user_id'],))
+    cur.execute('''
+        SELECT * FROM tasks 
+        WHERE assigned_to = %s OR assigned_to IS NULL 
+        ORDER BY due_date ASC, id DESC
+    ''', (session['user_id'],))
     tasks = cur.fetchall()
     cur.close()
     conn.close()
     
     return render_template_string(EMPLOYEE_HTML, tasks=tasks)
 
-# 【前台 API】變更任務進度狀態
+# 【前台 API】變更任務進度狀態（🛠️ 核心修復點）
 @app.route('/api/task/<int:task_id>/status', methods=['POST'])
 def update_task_status(task_id):
     if 'user_id' not in session:
@@ -507,10 +454,19 @@ def update_task_status(task_id):
     
     conn = get_db_connection()
     cur = conn.cursor()
+    
     if session.get('role') == 'admin':
+        # 管理者可以改任何人、任何狀態的任務
         cur.execute("UPDATE tasks SET status = %s WHERE id = %s", (new_status, task_id))
     else:
-        cur.execute("UPDATE tasks SET status = %s WHERE id = %s AND assigned_to = %s", (new_status, task_id, session['user_id']))
+        # 員工更新任務：
+        # 允許條件：這個任務原本就屬於他 (assigned_to = user_id) OR 這個任務是公開未指派的 (assigned_to IS NULL)
+        # 更新動作：同時把 status 換掉，並且強制把 assigned_to 綁定為當前員工的 ID
+        cur.execute('''
+            UPDATE tasks 
+            SET status = %s, assigned_to = %s 
+            WHERE id = %s AND (assigned_to = %s OR assigned_to IS NULL)
+        ''', (new_status, session['user_id'], task_id, session['user_id']))
     
     conn.commit()
     updated = cur.rowcount
@@ -550,7 +506,7 @@ def admin_dashboard():
     
     return render_template_string(ADMIN_HTML, tasks=tasks, employees=employees, stats=stats)
 
-# 【後台功能】發布任務
+# 【後台】發布任務
 @app.route('/admin/task/create', methods=['POST'])
 def create_task():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -573,44 +529,7 @@ def create_task():
     conn.close()
     return redirect(url_for('admin_dashboard'))
 
-# 【後台功能】新增員工帳號
-@app.route('/admin/employee/create', methods=['POST'])
-def create_employee():
-    if 'user_id' not in session or session.get('role') != 'admin':
-        return redirect(url_for('login'))
-    
-    username = request.form['username'].strip()
-    password = request.form['password']
-    
-    if not username or not password:
-        flash('帳號或密碼欄位不可為空！', 'danger')
-        return redirect(url_for('admin_dashboard'))
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
-    try:
-        cur.execute("SELECT id FROM users WHERE username = %s", (username,))
-        if cur.fetchone():
-            flash(f'建立失敗：帳號名稱 "@{username}" 已經存在了！', 'danger')
-        else:
-            hashed_password = generate_password_hash(password)
-            cur.execute(
-                "INSERT INTO users (username, password, role) VALUES (%s, %s, 'employee')",
-                (username, hashed_password)
-            )
-            conn.commit()
-            flash(f'成功建立新員工帳號：@{username}！', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'資料庫寫入錯誤: {str(e)}', 'danger')
-    finally:
-        cur.close()
-        conn.close()
-        
-    return redirect(url_for('admin_dashboard'))
-
-# 【後台功能】刪除任務
+# 【後台】刪除任務
 @app.route('/admin/task/delete/<int:task_id>', methods=['POST'])
 def delete_task(task_id):
     if 'user_id' not in session or session.get('role') != 'admin':
