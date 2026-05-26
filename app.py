@@ -228,7 +228,7 @@ EMPLOYEE_HTML = """
 </html>
 """
 
-# 3. 後台管理控制中心
+# 3. 後台管理控制中心 (新增員工管理區塊)
 ADMIN_HTML = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -252,10 +252,22 @@ ADMIN_HTML = """
             <p class="text-xs text-gray-400 mt-1">即時發派任務與全體進度監控中心</p>
         </div>
         <div class="flex gap-3">
-            <a href="/dashboard" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold p-2.5 px-4 rounded-xl transition-all">切換前台</a>
+            <a href="/dashboard" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold p-2.5 px-4 rounded-xl transition-all">切換前台看板</a>
             <a href="/logout" class="bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs p-2.5 px-4 rounded-xl">登出</a>
         </div>
     </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="max-w-7xl mx-auto mb-6">
+        {% for category, message in messages %}
+          <div class="p-4 text-xs rounded-xl {% if category == 'success' %}bg-emerald-500/10 border border-emerald-500/20 text-emerald-400{% else %}bg-red-500/10 border border-red-500/20 text-red-400{% endif %}">
+              {{ message }}
+          </div>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
 
     <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div class="glass p-4 rounded-2xl">
@@ -270,49 +282,72 @@ ADMIN_HTML = """
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div class="glass p-6 rounded-2xl shadow-xl h-fit">
-            <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
-                <i class="fa-solid fa-circle-plus text-emerald-400"></i> CREATE_NEW_TASK
-            </h2>
-            <form action="/admin/task/create" method="POST" class="space-y-4 text-xs">
-                <div>
-                    <label class="block font-bold text-gray-400 mb-1">任務主旨 *</label>
-                    <input type="text" name="title" required class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
-                </div>
-                <div>
-                    <label class="block font-bold text-gray-400 mb-1">細節敘述</label>
-                    <textarea name="description" rows="3" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-6">
+            
+            <div class="glass p-6 rounded-2xl shadow-xl h-fit">
+                <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
+                    <i class="fa-solid fa-circle-plus text-emerald-400"></i> CREATE_NEW_TASK
+                </h2>
+                <form action="/admin/task/create" method="POST" class="space-y-4 text-xs">
                     <div>
-                        <label class="block font-bold text-gray-400 mb-1">優先程度</label>
-                        <select name="priority" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white">
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
-                        </select>
+                        <label class="block font-bold text-gray-400 mb-1">任務主旨 *</label>
+                        <input type="text" name="title" required class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
                     </div>
                     <div>
-                        <label class="block font-bold text-gray-400 mb-1">指派擔當者</label>
-                        <select name="assigned_to" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white">
-                            <option value="">-- 待領取 --</option>
-                            {% for emp in employees %}
-                                <option value="{{ emp.id }}">@{{ emp.username }}</option>
-                            {% endfor %}
-                        </select>
+                        <label class="block font-bold text-gray-400 mb-1">細節敘述</label>
+                        <textarea name="description" rows="3" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500"></textarea>
                     </div>
-                </div>
-                <div>
-                    <label class="block font-bold text-gray-400 mb-1">截止死線</label>
-                    <input type="date" name="due_date" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none">
-                </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold p-3 rounded-xl transition-all shadow-md">
-                    確認分派任務
-                </button>
-            </form>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-bold text-gray-400 mb-1">優先程度</label>
+                            <select name="priority" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-gray-400 mb-1">指派擔當者</label>
+                            <select name="assigned_to" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white">
+                                <option value="">-- 待領取 --</option>
+                                {% for emp in employees %}
+                                    <option value="{{ emp.id }}">@{{ emp.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-400 mb-1">截止死線</label>
+                        <input type="date" name="due_date" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold p-3 rounded-xl transition-all shadow-md">
+                        確認分派任務
+                    </button>
+                </form>
+            </div>
+
+            <div class="glass p-6 rounded-2xl shadow-xl border border-indigo-500/10 h-fit">
+                <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
+                    <i class="fa-solid fa-user-plus text-indigo-400"></i> ADD_NEW_EMPLOYEE
+                </h2>
+                <form action="/admin/employee/create" method="POST" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-bold text-gray-400 mb-1">帳號名稱 (Username) *</label>
+                        <input type="text" name="username" required placeholder="例如: member02" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-400 mb-1">初始密碼 (Password) *</label>
+                        <input type="password" name="password" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold p-3 rounded-xl transition-all shadow-md">
+                        創建員工帳戶
+                    </button>
+                </form>
+            </div>
+
         </div>
 
-        <div class="lg:col-span-2 glass p-6 rounded-2xl shadow-xl overflow-x-auto">
+        <div class="lg:col-span-2 glass p-6 rounded-2xl shadow-xl overflow-x-auto h-fit">
             <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
                 <i class="fa-solid fa-list-check text-indigo-400"></i> REALTIME_MONITOR
             </h2>
@@ -475,7 +510,7 @@ def admin_dashboard():
     
     return render_template_string(ADMIN_HTML, tasks=tasks, employees=employees, stats=stats)
 
-# 【後台】發布任務
+# 【後台功能】發布任務
 @app.route('/admin/task/create', methods=['POST'])
 def create_task():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -498,7 +533,46 @@ def create_task():
     conn.close()
     return redirect(url_for('admin_dashboard'))
 
-# 【後台】刪除任務
+# 【後台功能】新增員工帳號 🚀 (NEW)
+@app.route('/admin/employee/create', methods=['POST'])
+def create_employee():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    
+    username = request.form['username'].strip()
+    password = request.form['password']
+    
+    if not username or not password:
+        flash('帳號或密碼欄位不可為空！', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        # 檢查帳號是否重複
+        cur.execute("SELECT id FROM users WHERE username = %s", (username,))
+        if cur.fetchone():
+            flash(f'建立失敗：帳號名稱 "@{username}" 已經存在了！', 'danger')
+        else:
+            # 建立新員工，並做安全密碼雜湊處理
+            hashed_password = generate_password_hash(password)
+            cur.execute(
+                "INSERT INTO users (username, password, role) VALUES (%s, %s, 'employee')",
+                (username, hashed_password)
+            )
+            conn.commit()
+            flash(f'成功建立新員工帳號：@{username}！現在可至上方表單直接指派任務給他。', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'資料庫寫入錯誤: {str(e)}', 'danger')
+    finally:
+        cur.close()
+        conn.close()
+        
+    return redirect(url_for('admin_dashboard'))
+
+# 【後台功能】刪除任務
 @app.route('/admin/task/delete/<int:task_id>', methods=['POST'])
 def delete_task(task_id):
     if 'user_id' not in session or session.get('role') != 'admin':
