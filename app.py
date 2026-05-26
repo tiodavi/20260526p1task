@@ -55,51 +55,104 @@ except Exception as e:
     print("Database init error:", e)
 
 
-# --- HTML 內嵌模板定義 (明亮、華麗、多色彩炫風) ---
+# --- 🧪 Tailwind 全域動畫擴充配置腳本 (適用於所有頁面) ---
+TAILWIND_ANIMATION_HEAD = """
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'gradient-x': 'gradientX 8s ease infinite',
+                        'shimmer': 'shimmer 2s infinite linear',
+                        'float': 'float 6s ease-in-out infinite',
+                        'fade-in-up': 'fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                    },
+                    keyframes: {
+                        gradientX: {
+                            '0%, 100%': { 'background-position': '0% 50%' },
+                            '50%': { 'background-position': '100% 50%' },
+                        },
+                        shimmer: {
+                            '0%': { transform: 'translateX(-150%)' },
+                            '100%': { transform: 'translateX(150%)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px) scale(1)' },
+                            '50%': { transform: 'translateY(-15px) scale(1.03)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(24px) scale(0.98)' },
+                            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .animation-delay-100 { animation-delay: 100ms; }
+        .animation-delay-200 { animation-delay: 200ms; }
+        .animation-delay-300 { animation-delay: 300ms; }
+        .animation-delay-400 { animation-delay: 400ms; }
+        .light-glass { 
+            background: rgba(255, 255, 255, 0.75); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+        }
+    </style>
+"""
 
-# 1. 活潑明亮登入頁
-LOGIN_HTML = """
+# --- 呼吸感背景裝飾球元件 ---
+BACKGROUND_DECORATION = """
+    <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-pink-200/30 to-purple-200/30 blur-3xl pointer-events-none animate-float"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-blue-200/30 to-emerald-200/30 blur-3xl pointer-events-none animate-float" style="animation-delay: -3s;"></div>
+"""
+
+
+# ==================== 1. 璀璨明亮登入頁 ====================
+LOGIN_HTML = f"""
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <title>工作看板 // 登入中心</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%); }
-        .vibrant-glow { box-shadow: 0 15px 35px rgba(99, 102, 241, 0.15); }
-    </style>
+    {TAILWIND_ANIMATION_HEAD}
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md p-8 rounded-3xl bg-white border border-white/60 shadow-2xl vibrant-glow backdrop-blur-lg">
+<body class="min-h-screen flex items-center justify-center p-4 bg-slate-50 relative overflow-hidden">
+    {BACKGROUND_DECORATION}
+
+    <div class="w-full max-w-md p-8 rounded-3xl bg-white/90 border border-white shadow-2xl backdrop-blur-xl animate-fade-in-up relative z-10">
         <div class="text-center mb-8">
-            <div class="inline-flex h-14 w-14 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 items-center justify-center mb-4 shadow-md shadow-purple-500/20">
+            <div class="inline-flex h-14 w-14 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 items-center justify-center mb-4 shadow-lg shadow-purple-500/20 animate-bounce">
                 <span class="text-white font-black text-2xl">✨</span>
             </div>
-            <h2 class="text-2xl font-black text-slate-800 tracking-wider font-sans">PulseFlow 工作空間</h2>
+            <h2 class="text-2xl font-black tracking-wider bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 bg-[length:200%_auto] animate-gradient-x bg-clip-text text-transparent">PulseFlow 工作空間</h2>
             <p class="text-xs text-slate-400 mt-1.5 font-medium tracking-widest">TASK MANAGEMENT SYSTEM</p>
         </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="p-3 mb-4 text-xs font-semibold rounded-xl bg-rose-50 border border-rose-100 text-rose-500 text-center">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        {{% with messages = get_flashed_messages(with_categories=true) %}}
+          {{% if messages %}}
+            {{% for category, message in messages %}}
+              <div class="p-3 mb-4 text-xs font-semibold rounded-xl bg-rose-50 border border-rose-100 text-rose-500 text-center animate-pulse">{{ message }}</div>
+            {{% endfor %}}
+          {{% endif %}}
+        {{% endwith %}}
 
         <form method="POST" action="/login" class="space-y-5">
             <div>
                 <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">帳號 USERNAME</label>
                 <input type="text" name="username" placeholder="請輸入使用者帳號" required 
-                       class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all">
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100 transition-all duration-300">
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">密碼 PASSWORD</label>
                 <input type="password" name="password" placeholder="請輸入密碼" required 
-                       class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all">
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100 transition-all duration-300">
             </div>
-            <button type="submit" class="w-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 text-white font-bold p-3.5 rounded-xl hover:opacity-95 transition-all shadow-lg shadow-indigo-500/20 text-sm tracking-wider mt-2">
+            <button type="submit" class="w-full relative group overflow-hidden bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 text-white font-bold p-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 text-sm tracking-wider mt-2 active:scale-95">
+                <span class="absolute inset-0 transform -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent w-full h-full -translate-x-full group-hover:animate-shimmer"></span>
                 登入系統 ENTER
             </button>
         </form>
@@ -108,108 +161,113 @@ LOGIN_HTML = """
 </html>
 """
 
-# 2. 前台員工看板介面
-EMPLOYEE_HTML = """
+
+# ==================== 2. 前台員工看板介面 (極致特效版) ====================
+EMPLOYEE_HTML = f"""
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <title>✨ 工作看板 // PulseFlow</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #334155; }
-        .light-glass { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.6); }
-        .glow-todo { box-shadow: 0 10px 25px -5px rgba(244, 63, 94, 0.12), 0 8px 10px -6px rgba(244, 63, 94, 0.08); }
-        .glow-progress { box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.12), 0 8px 10px -6px rgba(14, 165, 233, 0.08); }
-        .glow-done { box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.12), 0 8px 10px -6px rgba(16, 185, 129, 0.08); }
-    </style>
+    {TAILWIND_ANIMATION_HEAD}
 </head>
-<body class="p-4 md:p-8 font-sans antialiased">
+<body class="p-4 md:p-8 bg-slate-50 text-slate-700 antialiased min-h-screen relative overflow-x-hidden">
+    {BACKGROUND_DECORATION}
 
-    <div class="max-w-6xl mx-auto flex justify-between items-center mb-10 light-glass rounded-2xl p-4 px-6 shadow-xl shadow-slate-200/50">
+    <div class="max-w-6xl mx-auto flex justify-between items-center mb-10 light-glass rounded-2xl p-4 px-6 shadow-xl shadow-slate-200/40 animate-fade-in-up relative z-10">
         <div class="flex items-center gap-3.5">
-            <div class="h-11 w-11 rounded-xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center shadow-md shadow-purple-500/20">
-                <i class="fa-solid fa-sparkles text-white text-lg"></i>
+            <div class="h-11 w-11 rounded-xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center shadow-md shadow-purple-500/20 group cursor-pointer">
+                <i class="fa-solid fa-sparkles text-white text-lg group-hover:rotate-45 transition-transform"></i>
             </div>
             <div>
-                <h1 class="text-lg font-black tracking-wider text-slate-800">PulseFlow 看板</h1>
-                <p class="text-xs text-indigo-600 font-semibold">員工夥伴: @{{ session['username'] }}</p>
+                <h1 class="text-lg font-black tracking-wider text-slate-800 bg-gradient-to-r from-slate-800 to-indigo-900 bg-clip-text">PulseFlow 看板</h1>
+                <p class="text-xs text-indigo-600 font-semibold flex items-center gap-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping"></span> 職員夥伴: @{{ session['username'] }}
+                </p>
             </div>
         </div>
-        <a href="/logout" class="text-xs font-bold bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 p-2.5 px-4 rounded-xl transition-all border border-slate-200/60 shadow-sm">
+        <a href="/logout" class="text-xs font-bold bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 p-2.5 px-4 rounded-xl transition-all border border-slate-200/60 shadow-sm active:scale-95">
             安全登出 <i class="fa-solid fa-arrow-right-from-bracket ml-1"></i>
         </a>
     </div>
 
-    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
         
-        <div class="space-y-4">
+        <div class="space-y-4 animate-fade-in-up animation-delay-100 opacity-0">
             <div class="flex items-center justify-between px-2">
                 <span class="text-xs font-extrabold tracking-wider text-rose-500 bg-rose-50 p-1.5 px-3 rounded-xl border border-rose-100/80"><i class="fa-solid fa-bolt mr-1"></i> 待處理 BACKLOG</span>
-                <span class="bg-rose-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm shadow-rose-500/20" id="c-todo">0</span>
+                <span class="bg-rose-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm" id="c-todo">0</span>
             </div>
             <div class="space-y-4" id="col-todo">
-                {% for task in tasks if task.status == 'todo' %}
-                    <div class="light-glass glow-todo border-t-4 border-t-rose-400 p-5 rounded-2xl relative group transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-rose-500/10 bg-white">
-                        <div class="flex justify-between items-start mb-2.5">
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 border border-rose-100">{{ task.priority | upper }}</span>
-                            <span class="text-[11px] font-medium text-slate-400"><i class="fa-regular fa-calendar-days mr-1 text-slate-400"></i>{{ task.due_date or '無期限' }}</span>
-                        </div>
-                        <h3 class="text-sm font-bold text-slate-800 mb-1.5">{{ task.title }}</h3>
-                        <p class="text-xs text-slate-500 leading-relaxed mb-4">{{ task.description or '無描述資訊。' }}</p>
-                        <div class="flex gap-2 border-t border-slate-100 pt-3.5 justify-end">
-                            <button type="button" onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-xs font-bold p-2 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 text-white hover:opacity-90 transition-all shadow-md shadow-indigo-500/10 active:scale-95">
-                                🚀 開始執行
-                            </button>
+                {{% for task in tasks if task.status == 'todo' %}}
+                    <div class="group relative p-[1px] rounded-2xl bg-slate-200 hover:bg-gradient-to-r hover:from-pink-400 hover:to-rose-400 shadow-lg transition-all duration-300 hover:scale-[1.02] bg-white overflow-hidden">
+                        <div class="absolute inset-0 transform -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent w-1/2 h-full top-0 left-0 -translate-x-full group-hover:animate-shimmer pointer-events-none"></div>
+                        <div class="bg-white p-5 rounded-[15px] h-full relative">
+                            <div class="flex justify-between items-start mb-2.5">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 border border-rose-100">{{ task.priority | upper }}</span>
+                                <span class="text-[11px] font-medium text-slate-400"><i class="fa-regular fa-calendar-days mr-1"></i>{{ task.due_date or '無期限' }}</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 mb-1.5">{{ task.title }}</h3>
+                            <p class="text-xs text-slate-500 leading-relaxed mb-4">{{ task.description or '無描述資訊。' }}</p>
+                            <div class="flex border-t border-slate-100 pt-3.5 justify-end">
+                                <button type="button" onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-xs font-bold p-2 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 text-white hover:opacity-90 transition-all shadow-md active:scale-95">
+                                    🚀 開始執行
+                                </button>
+                            </div>
                         </div>
                     </div>
-                {% endfor %}
+                {{% endfor %}}
             </div>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-4 animate-fade-in-up animation-delay-200 opacity-0">
             <div class="flex items-center justify-between px-2">
                 <span class="text-xs font-extrabold tracking-wider text-sky-600 bg-sky-50 p-1.5 px-3 rounded-xl border border-sky-100/80"><i class="fa-solid fa-hourglass-half mr-1"></i> 執行中 PROCESSING</span>
-                <span class="bg-sky-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm shadow-sky-500/20" id="c-progress">0</span>
+                <span class="bg-sky-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm" id="c-progress">0</span>
             </div>
             <div class="space-y-4" id="col-in_progress">
-                {% for task in tasks if task.status == 'in_progress' %}
-                    <div class="light-glass glow-progress border-t-4 border-t-sky-400 p-5 rounded-2xl relative group transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-sky-500/10 bg-white">
-                        <div class="flex justify-between items-start mb-2.5">
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100">{{ task.priority | upper }}</span>
-                            <span class="text-[11px] font-medium text-slate-400"><i class="fa-regular fa-calendar-days mr-1 text-slate-400"></i>{{ task.due_date or '無期限' }}</span>
-                        </div>
-                        <h3 class="text-sm font-bold text-slate-800 mb-1.5">{{ task.title }}</h3>
-                        <p class="text-xs text-slate-500 leading-relaxed mb-4">{{ task.description or '無描述資訊。' }}</p>
-                        <div class="flex gap-2 border-t border-slate-100 pt-3.5 justify-end">
-                            <button type="button" onclick="moveTask({{ task.id }}, 'todo')" class="cursor-pointer text-xs font-semibold p-1.5 px-3 rounded-xl bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-500 transition-all border border-slate-200/50">↩ 退回</button>
-                            <button type="button" onclick="moveTask({{ task.id }}, 'done')" class="cursor-pointer text-xs font-bold p-1.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-white hover:opacity-90 transition-all shadow-md shadow-emerald-500/10">✓ 回報完成</button>
+                {{% for task in tasks if task.status == 'in_progress' %}}
+                    <div class="group relative p-[1px] rounded-2xl bg-slate-200 hover:bg-gradient-to-r hover:from-sky-400 hover:to-indigo-400 shadow-lg transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10 bg-white overflow-hidden">
+                        <div class="absolute inset-0 transform -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent w-1/2 h-full top-0 left-0 -translate-x-full group-hover:animate-shimmer pointer-events-none"></div>
+                        <div class="bg-white p-5 rounded-[15px] h-full">
+                            <div class="flex justify-between items-start mb-2.5">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100">{{ task.priority | upper }}</span>
+                                <span class="text-[11px] font-medium text-slate-400"><i class="fa-regular fa-calendar-days mr-1"></i>{{ task.due_date or '無期限' }}</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 mb-1.5">{{ task.title }}</h3>
+                            <p class="text-xs text-slate-500 leading-relaxed mb-4">{{ task.description or '無描述資訊。' }}</p>
+                            <div class="flex gap-2 border-t border-slate-100 pt-3.5 justify-end">
+                                <button type="button" onclick="moveTask({{ task.id }}, 'todo')" class="cursor-pointer text-xs font-semibold p-1.5 px-3 rounded-xl bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-500 transition-all border border-slate-200/50">↩ 退回</button>
+                                <button type="button" onclick="moveTask({{ task.id }}, 'done')" class="cursor-pointer text-xs font-bold p-1.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-white hover:opacity-90 transition-all shadow-md shadow-emerald-500/10">✓ 回報完成</button>
+                            </div>
                         </div>
                     </div>
-                {% endfor %}
+                {{% endfor %}}
             </div>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-4 animate-fade-in-up animation-delay-300 opacity-0">
             <div class="flex items-center justify-between px-2">
                 <span class="text-xs font-extrabold tracking-wider text-emerald-600 bg-emerald-50 p-1.5 px-3 rounded-xl border border-emerald-100/80"><i class="fa-solid fa-circle-check mr-1"></i> 已完結 COMPLETED</span>
-                <span class="bg-emerald-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm shadow-emerald-500/20" id="c-done">0</span>
+                <span class="bg-emerald-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm" id="c-done">0</span>
             </div>
             <div class="space-y-4" id="col-done">
-                {% for task in tasks if task.status == 'done' %}
-                    <div class="light-glass glow-done border-t-4 border-t-emerald-400 p-5 rounded-2xl relative group opacity-75 transition-all duration-300 bg-slate-50/50">
-                        <div class="flex justify-between items-start mb-2.5">
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-500">{{ task.priority | upper }}</span>
-                            <span class="text-[11px] font-medium text-slate-400"><i class="fa-regular fa-calendar-days mr-1 text-slate-300"></i>{{ task.due_date or '無期限' }}</span>
-                        </div>
-                        <h3 class="text-sm font-bold text-slate-400 mb-1.5 line-through">{{ task.title }}</h3>
-                        <p class="text-xs text-slate-400 leading-relaxed mb-4">{{ task.description or '' }}</p>
-                        <div class="flex gap-2 border-t border-slate-200/60 pt-3.5 justify-end">
-                            <button type="button" onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-xs font-semibold p-1.5 px-3 rounded-xl bg-white text-slate-500 hover:text-sky-500 hover:border-sky-200 transition-all border border-slate-200 shadow-sm">重啟任務</button>
+                {{% for task in tasks if task.status == 'done' %}}
+                    <div class="group relative p-[1px] rounded-2xl bg-slate-200 shadow-md transition-all duration-500 bg-slate-50/50 overflow-hidden opacity-80 hover:opacity-100">
+                        <div class="absolute -bottom-10 -right-10 h-20 w-20 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-400 opacity-0 group-hover:opacity-10 group-hover:scale-[3.5] transition-transform duration-500 ease-out pointer-events-none"></div>
+                        <div class="bg-white p-5 rounded-[15px] h-full relative z-10">
+                            <div class="flex justify-between items-start mb-2.5">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-400">{{ task.priority | upper }}</span>
+                                <span class="text-[11px] font-medium text-slate-400"><i class="fa-regular fa-calendar-days mr-1 text-slate-300"></i>{{ task.due_date or '無期限' }}</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-400 mb-1.5 line-through group-hover:text-slate-600 transition-colors">{{ task.title }}</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed mb-4">{{ task.description or '' }}</p>
+                            <div class="flex border-t border-slate-100 pt-3.5 justify-end">
+                                <button type="button" onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-xs font-semibold p-1.5 px-3 rounded-xl bg-white text-slate-500 hover:text-sky-500 hover:border-sky-200 transition-all border border-slate-200 shadow-sm">重啟任務</button>
+                            </div>
                         </div>
                     </div>
-                {% endfor %}
+                {{% endfor %}}
             </div>
         </div>
 
@@ -230,7 +288,7 @@ EMPLOYEE_HTML = """
                 alert('網頁連線異常，請重新整理頁面再試！');
             }
         }
-        function updateCounters() {
+        预估 = () => {
             const todoCol = document.getElementById('col-todo');
             const progressCol = document.getElementById('col-in_progress');
             const doneCol = document.getElementById('col-done');
@@ -238,70 +296,71 @@ EMPLOYEE_HTML = """
             if(progressCol) document.getElementById('c-progress').innerText = progressCol.children.length;
             if(doneCol) document.getElementById('c-done').innerText = doneCol.children.length;
         }
-        window.addEventListener('DOMContentLoaded', updateCounters);
+        window.addEventListener('DOMContentLoaded', 预估);
     </script>
 </body>
 </html>
 """
 
-# 3. 後台管理控制中心 (全面新增員工 CRUD 面板)
-ADMIN_HTML = """
+
+# ==================== 3. 後台管理控制中心 (全面動畫特效版) ====================
+ADMIN_HTML = f"""
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <title>⚙️ Control Center // 後台管理</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #334155; }
-        .light-glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.5); }
-    </style>
+    {TAILWIND_ANIMATION_HEAD}
 </head>
-<body class="p-4 md:p-8 font-sans">
+<body class="p-4 md:p-8 bg-slate-50 text-slate-700 antialiased min-h-screen relative overflow-x-hidden">
+    {BACKGROUND_DECORATION}
 
-    <div class="max-w-7xl mx-auto flex justify-between items-center mb-8 border-b border-slate-200 pb-6">
+    <div class="max-w-7xl mx-auto flex justify-between items-center mb-8 border-b border-slate-200 pb-6 animate-fade-in-up relative z-10">
         <div>
             <h1 class="text-xl font-black text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-sliders text-indigo-500"></i> PulseFlow 核心調度後台
+                <i class="fa-solid fa-sliders text-indigo-500 animate-spin" style="animation-duration: 12s;"></i> 
+                <span class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-[length:200%_auto] animate-gradient-x bg-clip-text text-transparent">PulseFlow 核心調度後台</span>
             </h1>
             <p class="text-xs text-slate-400 mt-1 font-medium">任務全局監控 ＆ 全體員工帳號 CRUD 整合系統</p>
         </div>
         <div class="flex gap-3">
-            <a href="/dashboard" class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold p-3 px-5 rounded-xl transition-all shadow-md shadow-indigo-500/10 hover:opacity-95">切換前台看板</a>
-            <a href="/logout" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold p-3 px-4 rounded-xl transition-all">登出</a>
+            <a href="/dashboard" class="relative group overflow-hidden bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold p-3 px-5 rounded-xl transition-all shadow-md active:scale-95">
+                <span class="absolute inset-0 transform -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent w-full h-full -translate-x-full group-hover:animate-shimmer"></span>
+                切換前台看板
+            </a>
+            <a href="/logout" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold p-3 px-4 rounded-xl transition-all active:scale-95">登出</a>
         </div>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="max-w-7xl mx-auto mb-6">
-        {% for category, message in messages %}
-          <div class="p-3.5 text-xs font-bold rounded-xl {% if category=='success' %} bg-emerald-50 border border-emerald-200 text-emerald-600 {% else %} bg-rose-50 border border-rose-200 text-rose-600 {% endif %}">{{ message }}</div>
-        {% endfor %}
+    {{% with messages = get_flashed_messages(with_categories=true) %}}
+      {{% if messages %}}
+        <div class="max-w-7xl mx-auto mb-6 relative z-10 animate-bounce">
+        {{% for category, message in messages %}}
+          <div class="p-3.5 text-xs font-bold rounded-xl {{% if category=='success' %}} bg-emerald-50 border border-emerald-200 text-emerald-600 {{% else %}} bg-rose-50 border border-rose-200 text-rose-600 {{% endif %}}">{{ message }}</div>
+        {{% endfor %}}
         </div>
-      {% endif %}
-    {% endwith %}
+      {{% endif %}}
+    {{% endwith %}}
 
-    <div class="max-w-7xl mx-auto grid grid-cols-3 gap-4 mb-8">
-        <div class="light-glass p-4 rounded-2xl shadow-sm border-l-4 border-l-indigo-500 bg-white">
+    <div class="max-w-7xl mx-auto grid grid-cols-3 gap-4 mb-8 animate-fade-in-up animation-delay-100 opacity-0 relative z-10">
+        <div class="light-glass p-4 rounded-2xl shadow-sm border-l-4 border-l-indigo-500 bg-white hover:scale-[1.02] transition-transform">
             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">總任務監控量</p>
             <p class="text-2xl font-black text-slate-800 mt-1">{{ stats.total or 0 }} <span class="text-xs text-slate-400 font-normal">件</span></p>
         </div>
-        <div class="light-glass p-4 rounded-2xl shadow-sm border-l-4 border-l-emerald-500 bg-white">
+        <div class="light-glass p-4 rounded-2xl shadow-sm border-l-4 border-l-emerald-500 bg-white hover:scale-[1.02] transition-transform">
             <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">已完結任務</p>
             <p class="text-2xl font-black text-emerald-600 mt-1">{{ stats.done or 0 }} <span class="text-xs text-slate-400 font-normal">件</span></p>
         </div>
-        <div class="light-glass p-4 rounded-2xl shadow-sm border-l-4 border-l-purple-500 bg-white">
+        <div class="light-glass p-4 rounded-2xl shadow-sm border-l-4 border-l-purple-500 bg-white hover:scale-[1.02] transition-transform">
             <p class="text-[11px] font-bold text-purple-600 uppercase tracking-wider">在職內部員工</p>
             <p class="text-2xl font-black text-purple-600 mt-1">{{ employees | length }} <span class="text-xs text-slate-400 font-normal">人</span></p>
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-        <div class="light-glass p-6 rounded-2xl shadow-lg bg-white h-fit">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12 animate-fade-in-up animation-delay-200 opacity-0 relative z-10">
+        <div class="light-glass p-6 rounded-2xl shadow-lg bg-white h-fit hover:shadow-xl transition-shadow">
             <h2 class="text-sm font-black text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
-                <i class="fa-solid fa-circle-plus text-pink-500 text-base"></i> 發布並指派新任務
+                <i class="fa-solid fa-circle-plus text-pink-500 text-base animate-pulse"></i> 發布並指派新任務
             </h2>
             <form action="/admin/task/create" method="POST" class="space-y-4 text-xs font-medium">
                 <div>
@@ -335,13 +394,14 @@ ADMIN_HTML = """
                     <label class="block font-bold text-slate-600 mb-1.5">截止死線</label>
                     <input type="date" name="due_date" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 focus:outline-none focus:border-indigo-500">
                 </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:opacity-95 text-white font-bold p-3 rounded-xl transition-all shadow-md mt-1 text-sm">
+                <button type="submit" class="w-full relative group overflow-hidden bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 text-white font-bold p-3 rounded-xl transition-all shadow-md text-sm active:scale-95">
+                    <span class="absolute inset-0 transform -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent w-full h-full -translate-x-full group-hover:animate-shimmer"></span>
                     發布並派單
                 </button>
             </form>
         </div>
 
-        <div class="lg:col-span-2 light-glass p-6 rounded-2xl shadow-lg bg-white overflow-x-auto">
+        <div class="lg:col-span-2 light-glass p-6 rounded-2xl shadow-lg bg-white overflow-x-auto hover:shadow-xl transition-shadow">
             <h2 class="text-sm font-black text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
                 <i class="fa-solid fa-list-check text-indigo-500 text-base"></i> 全局任務即時監控
             </h2>
@@ -357,7 +417,7 @@ ADMIN_HTML = """
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     {% for task in tasks %}
-                    <tr class="hover:bg-slate-50/60 transition-all">
+                    <tr class="hover:bg-indigo-50/30 transition-all duration-300">
                         <td class="p-3">
                             <div class="font-bold text-slate-800 text-sm">{{ task.title }}</div>
                             <div class="text-[11px] text-slate-400 mt-0.5 max-w-[220px] truncate">{{ task.description or '...' }}</div>
@@ -387,8 +447,8 @@ ADMIN_HTML = """
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="light-glass p-6 rounded-2xl shadow-lg bg-white h-fit border-t-4 border-t-purple-400">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in-up animation-delay-300 opacity-0 relative z-10">
+        <div class="light-glass p-6 rounded-2xl shadow-lg bg-white h-fit border-t-4 border-t-purple-500 hover:shadow-xl transition-all">
             <h2 class="text-sm font-black text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
                 <i class="fa-solid fa-user-plus text-purple-500 text-base"></i> <span id="emp-form-title">新增員工帳號</span>
             </h2>
@@ -407,7 +467,7 @@ ADMIN_HTML = """
                 </div>
                 
                 <div class="flex gap-2 pt-2">
-                    <button type="submit" id="emp-submit-btn" class="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold p-3 rounded-xl transition-all shadow-md text-sm">
+                    <button type="submit" id="emp-submit-btn" class="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold p-3 rounded-xl transition-all shadow-md text-sm active:scale-95">
                         確認新增建立
                     </button>
                     <button type="button" id="emp-cancel-btn" onclick="resetEmployeeForm()" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold p-3 rounded-xl transition-all text-xs">
@@ -417,7 +477,7 @@ ADMIN_HTML = """
             </form>
         </div>
 
-        <div class="lg:col-span-2 light-glass p-6 rounded-2xl shadow-lg bg-white overflow-x-auto border-t-4 border-t-indigo-400">
+        <div class="lg:col-span-2 light-glass p-6 rounded-2xl shadow-lg bg-white overflow-x-auto border-t-4 border-t-indigo-400 hover:shadow-xl transition-all">
             <h2 class="text-sm font-black text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
                 <i class="fa-solid fa-users-gear text-indigo-500 text-base"></i> 企業現有在職員工名冊
             </h2>
@@ -432,21 +492,20 @@ ADMIN_HTML = """
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     {% for emp in employees %}
-                    <tr class="hover:bg-slate-50/60 transition-all">
+                    <tr class="hover:bg-purple-50/30 transition-all duration-300">
                         <td class="p-3.5 font-mono text-slate-400">#{{ emp.id }}</td>
                         <td class="p-3.5 font-bold text-slate-800">
-                            <span class="inline-block h-2 w-2 rounded-full bg-emerald-400 mr-2"></span>@{{ emp.username }}
+                            <span class="inline-block h-2 w-2 rounded-full bg-emerald-400 mr-2 animate-ping"></span>@{{ emp.username }}
                         </td>
                         <td class="p-3.5">
                             <span class="bg-purple-50 text-purple-600 border border-purple-100 font-semibold p-1 px-2.5 rounded-full text-[11px]">內部職員</span>
                         </td>
                         <td class="p-3.5 text-center flex items-center justify-center gap-4">
-                            <button type="button" onclick="startEditEmployee({{ emp.id }}, '{{ emp.username }}')" class="text-indigo-500 hover:text-indigo-700 font-bold transition-all flex items-center gap-1">
+                            <button type="button" onclick="startEditEmployee({{ emp.id }}, '{{ emp.username }}')" class="text-indigo-500 hover:text-indigo-700 font-bold transition-all flex items-center gap-1 active:scale-95">
                                 <i class="fa-regular fa-pen-to-square"></i> 編輯
                             </button>
-                            
-                            <form action="/admin/employee/delete/{{ emp.id }}" method="POST" onsubmit="return confirm('警告！刪除此員工帳號會將原本指派給他的任務釋放為「未指派」狀態，確定移除此人？')" class="inline">
-                                <button type="submit" class="text-slate-400 hover:text-rose-500 font-bold transition-all flex items-center gap-1">
+                            <form action="/admin/employee/delete/{{ emp.id }}" method="POST" onsubmit="return confirm('確定移除此人？')" class="inline">
+                                <button type="submit" class="text-slate-400 hover:text-rose-500 font-bold transition-all flex items-center gap-1 active:scale-95">
                                     <i class="fa-regular fa-trash-can"></i> 註銷
                                 </button>
                             </form>
@@ -465,17 +524,13 @@ ADMIN_HTML = """
             document.getElementById('emp-form-title').innerText = "編輯員工資料 // 重設密碼";
             document.getElementById('emp-id').value = id;
             document.getElementById('emp-username').value = username;
-            
-            // 變更表單發送的後端路徑為 Update 機制
             document.getElementById('employee-form').action = "/admin/employee/update";
-            
-            // 調整密碼輸入要求：更新時不強迫更改密碼
             document.getElementById('emp-password').required = false;
             document.getElementById('emp-password').placeholder = "若不修改密碼請留空";
-            document.getElementById('pwd-hint').innerHTML = "(要重設密碼請輸入新密碼，不改留空)";
+            document.getElementById('pwd-hint').innerHTML = "(重設密碼請輸入，不改留空)";
             
             document.getElementById('emp-submit-btn').innerText = "儲存變更資料";
-            document.getElementById('emp-submit-btn').className = "flex-1 bg-gradient-to-r from-indigo-500 to-sky-500 text-white font-bold p-3 rounded-xl transition-all shadow-md text-sm";
+            document.getElementById('emp-submit-btn').className = "flex-1 bg-gradient-to-r from-indigo-500 to-sky-500 text-white font-bold p-3 rounded-xl transition-all shadow-md text-sm active:scale-95";
             document.getElementById('emp-cancel-btn').classList.remove('hidden');
         }
 
@@ -483,18 +538,16 @@ ADMIN_HTML = """
             document.getElementById('emp-form-title').innerText = "新增員工帳號";
             document.getElementById('emp-id').value = "";
             document.getElementById('employee-form').reset();
-            
             document.getElementById('employee-form').action = "/admin/employee/create";
             document.getElementById('emp-password').required = true;
             document.getElementById('emp-password').placeholder = "請輸入密碼";
             document.getElementById('pwd-hint').innerHTML = "(設定新帳號初始密碼)";
             
             document.getElementById('emp-submit-btn').innerText = "確認新增建立";
-            document.getElementById('emp-submit-btn').className = "w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold p-3 rounded-xl transition-all shadow-md text-sm";
+            document.getElementById('emp-submit-btn').className = "w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold p-3 rounded-xl transition-all shadow-md text-sm active:scale-95";
             document.getElementById('emp-cancel-btn').classList.add('hidden');
         }
     </script>
-
 </body>
 </html>
 """
@@ -593,7 +646,7 @@ def update_task_status(task_id):
         return jsonify({'error': f'Database error: {str(db_err)}'}), 400
 
 
-# --- 【後台核心】管理者控制台與 CRUD 功能 ---
+# --- 管理者控制台與 CRUD 功能 ---
 
 @app.route('/admin')
 def admin_dashboard():
@@ -603,7 +656,6 @@ def admin_dashboard():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 1. 撈取全部任務
     cur.execute('''
         SELECT t.*, u.username as assignee 
         FROM tasks t 
@@ -612,11 +664,9 @@ def admin_dashboard():
     ''')
     tasks = cur.fetchall()
     
-    # 2. 撈取全體內部員工名冊 (Read)
     cur.execute("SELECT id, username FROM users WHERE role = 'employee' ORDER BY id DESC")
     employees = cur.fetchall()
     
-    # 3. 數據統計
     cur.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) as done FROM tasks")
     stats = cur.fetchone()
     
@@ -625,7 +675,6 @@ def admin_dashboard():
     
     return render_template_string(ADMIN_HTML, tasks=tasks, employees=employees, stats=stats)
 
-# 【後台任務 CRUD】建立
 @app.route('/admin/task/create', methods=['POST'])
 def create_task():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -649,7 +698,6 @@ def create_task():
     flash('任務指派成功！', 'success')
     return redirect(url_for('admin_dashboard'))
 
-# 【後台任務 CRUD】刪除
 @app.route('/admin/task/delete/<int:task_id>', methods=['POST'])
 def delete_task(task_id):
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -665,9 +713,8 @@ def delete_task(task_id):
     return redirect(url_for('admin_dashboard'))
 
 
-# --- ✨ 追加模組：員工帳號 (Employee CRUD) 控制器路由 ---
+# --- 員工帳號 (Employee CRUD) 控制器路由 ---
 
-# 1. 【員工 CRUD - Create】新增內部夥伴
 @app.route('/admin/employee/create', methods=['POST'])
 def admin_create_employee():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -684,10 +731,9 @@ def admin_create_employee():
     cur = conn.cursor()
     
     try:
-        # 檢查是否有重複名稱
         cur.execute("SELECT id FROM users WHERE username = %s", (username,))
         if cur.fetchone():
-            flash(f'此帳號名稱 "@{username}" 已被佔用，請換個名字！', 'danger')
+            flash(f'此帳號名稱 "@{username}" 已被佔用！', 'danger')
         else:
             hashed_pwd = generate_password_hash(password)
             cur.execute("INSERT INTO users (username, password, role) VALUES (%s, %s, 'employee')", (username, hashed_pwd))
@@ -701,7 +747,6 @@ def admin_create_employee():
         
     return redirect(url_for('admin_dashboard'))
 
-# 2. 【員工 CRUD - Update】修改基本資料與重設密碼
 @app.route('/admin/employee/update', methods=['POST'])
 def admin_update_employee():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -720,11 +765,9 @@ def admin_update_employee():
     
     try:
         if password:
-            # 管理員輸入了新密碼 -> 同步更新使用者名稱與新密碼
             hashed_pwd = generate_password_hash(password)
             cur.execute("UPDATE users SET username = %s, password = %s WHERE id = %s AND role='employee'", (username, hashed_pwd, emp_id))
         else:
-            # 密碼留空 -> 只更新使用者帳號名稱
             cur.execute("UPDATE users SET username = %s WHERE id = %s AND role='employee'", (username, emp_id))
             
         conn.commit()
@@ -737,7 +780,6 @@ def admin_update_employee():
         
     return redirect(url_for('admin_dashboard'))
 
-# 3. 【員工 CRUD - Delete】註銷移除帳號
 @app.route('/admin/employee/delete/<int:emp_id>', methods=['POST'])
 def admin_delete_employee():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -747,8 +789,6 @@ def admin_delete_employee():
     cur = conn.cursor()
     
     try:
-        # 執行刪除（受限於 tasks 表的 FOREIGN KEY ... REFERENCES users(id) ON DELETE SET NULL，
-        # 該職員原本持有的任務將會被自動設為 NULL 放回大廳，不會造成資料庫潰散，非常安全！）
         cur.execute("DELETE FROM users WHERE id = %s AND role = 'employee'", (emp_id,))
         conn.commit()
         flash('該員工帳號已成功自系統內註銷移除。', 'success')
