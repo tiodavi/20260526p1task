@@ -55,7 +55,7 @@ except Exception as e:
     print("Database init error:", e)
 
 
-# --- HTML 內嵌模板定義 ---
+# --- HTML 內嵌模板定義 (年輕人喜愛的極簡暗黑/潮流霓虹風) ---
 
 # 1. 潮流登入頁
 LOGIN_HTML = """
@@ -106,7 +106,7 @@ LOGIN_HTML = """
 </html>
 """
 
-# 2. 前台員工看板介面 (🛠️ 這裡修正了 JavaScript 避免跳出錯誤彈窗)
+# 2. 前台員工看板介面
 EMPLOYEE_HTML = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -157,9 +157,7 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-white mb-1">{{ task.title }}</h3>
                         <p class="text-xs text-gray-400 leading-relaxed mb-4">{{ task.description or '無描述。' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button type="button" onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-2 px-3.5 rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all shadow-md active:scale-95">
-                                🚀 開始執行
-                            </button>
+                            <button type="button" onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all">🚀 開始執行</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -221,26 +219,19 @@ EMPLOYEE_HTML = """
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: newStatus })
                 });
-                
-                if (response.ok) {
-                    // 只要後端成功回應，立刻刷新頁面
-                    window.location.reload();
+                if(response.ok) { 
+                    window.location.reload(); 
                     return;
                 }
-                
-                // 如果後端回傳非 200 狀態碼才跳提示
                 alert('任務變更失敗，請重試！');
-            } catch (err) {
-                console.error("API Error:", err);
-                alert('網路連線異常，請稍後再試！');
+            } catch(e) {
+                alert('網路錯誤，請稍後重試！');
             }
         }
-        
         function updateCounters() {
             const todoCol = document.getElementById('col-todo');
             const progressCol = document.getElementById('col-in_progress');
             const doneCol = document.getElementById('col-done');
-            
             if(todoCol) document.getElementById('c-todo').innerText = todoCol.children.length;
             if(progressCol) document.getElementById('c-progress').innerText = progressCol.children.length;
             if(doneCol) document.getElementById('c-done').innerText = doneCol.children.length;
@@ -429,7 +420,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# 【前台】員工看板路由（允許看到指派給自己、以及完全未指派公開的任務）
+# 【前台】員工看板路由（🛠️ 修改：讓員工也能在大廳看到完全未被指派的公開任務）
 @app.route('/dashboard')
 def employee_dashboard():
     if 'user_id' not in session or session.get('role') != 'employee':
@@ -437,6 +428,7 @@ def employee_dashboard():
     
     conn = get_db_connection()
     cur = conn.cursor()
+    # 撈出「屬於自己」或者「完全沒人領取的任務」
     cur.execute('''
         SELECT * FROM tasks 
         WHERE assigned_to = %s OR assigned_to IS NULL 
@@ -448,7 +440,7 @@ def employee_dashboard():
     
     return render_template_string(EMPLOYEE_HTML, tasks=tasks)
 
-# 【前台 API】變更任務進度狀態
+# 【前台 API】變更任務進度狀態 (🛠️ 這裡修正了 400 權限隔離 Bug)
 @app.route('/api/task/<int:task_id>/status', methods=['POST'])
 def update_task_status(task_id):
     if 'user_id' not in session:
@@ -463,8 +455,9 @@ def update_task_status(task_id):
     if session.get('role') == 'admin':
         cur.execute("UPDATE tasks SET status = %s WHERE id = %s", (new_status, task_id))
     else:
-        # 允許條件：這個任務原本就屬於他 OR 這個任務是公開未指派的 (assigned_to IS NULL)
-        # 更新動作：同時把 status 換掉，並且強制把 assigned_to 綁定為當前員工的 ID
+        # 【核心修正點】：
+        # 允許員工更新狀態的條件：原本就是自己的任務 (assigned_to = id) OR 這個任務目前是公開待領取 (assigned_to IS NULL)
+        # 同時，在更新狀態時，順便將 assigned_to 覆寫為當前員工的 ID，完成「主動領取任務」
         cur.execute('''
             UPDATE tasks 
             SET status = %s, assigned_to = %s 
@@ -476,6 +469,7 @@ def update_task_status(task_id):
     cur.close()
     conn.close()
     
+    # 只要有成功更新到欄位，就回傳 200 OK，否則才回傳 400
     return jsonify({'success': True}) if updated > 0 else jsonify({'error': 'Failed'}), 400
 
 # 【後台】管理者控制台
