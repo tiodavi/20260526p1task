@@ -16,7 +16,8 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
-    # 用戶表
+    
+    # 1. 強制確保 users 表存在
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -25,20 +26,39 @@ def init_db():
             role VARCHAR(20) DEFAULT 'employee'
         );
     ''')
-    # 任務表
+    
+    # 2. 強制確保 tasks 表存在
     cur.execute('''
         CREATE TABLE IF NOT EXISTS tasks (
             id SERIAL PRIMARY KEY,
             title VARCHAR(100) NOT NULL,
             description TEXT,
-            status VARCHAR(20) DEFAULT 'todo', -- 'todo', 'in_progress', 'done'
-            priority VARCHAR(10) DEFAULT 'medium', -- 'low', 'medium', 'high'
-            assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            status VARCHAR(20) DEFAULT 'todo',
+            priority VARCHAR(10) DEFAULT 'medium',
+            assigned_to INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             due_date DATE
         );
     ''')
-    # 建立預設帳號
+    
+    # 🛠️ 【修正外鍵關聯】主動檢查並補上外鍵關聯線
+    try:
+        cur.execute('''
+            ALTER TABLE tasks 
+            ADD CONSTRAINT fk_tasks_assigned_to 
+            FOREIGN KEY (assigned_to) REFERENCES users(id) 
+            ON DELETE SET NULL;
+        ''')
+        print("成功手動為 tasks 與 users 建立關聯外鍵！")
+    except psycopg2.errors.DuplicateObject:
+        # 如果關聯早就存在，會跳過此錯誤，不影響運行
+        pass
+    except Exception as e:
+        print("關聯建立提示 (可能已存在):", e)
+        
+    conn.commit()
+    
+    # 3. 建立預設帳號
     cur.execute("SELECT * FROM users WHERE username='admin'")
     if not cur.fetchone():
         cur.execute("INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
@@ -55,7 +75,7 @@ except Exception as e:
     print("Database init error:", e)
 
 
-# --- HTML 內嵌模板定義 (年輕人喜愛的極簡暗黑/潮流霓虹風) ---
+# --- HTML 內嵌模板定義 ---
 
 # 1. 潮流登入頁
 LOGIN_HTML = """
@@ -106,7 +126,7 @@ LOGIN_HTML = """
 </html>
 """
 
-# 2. 前台員工看板介面
+# 2. 前台員工看板介面 (🛠️ 修正並優化 JS 執行按鈕點擊效能)
 EMPLOYEE_HTML = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -157,7 +177,9 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-white mb-1">{{ task.title }}</h3>
                         <p class="text-xs text-gray-400 leading-relaxed mb-4">{{ task.description or '無描述。' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button onclick="moveTask({{ task.id }}, 'in_progress')" class="text-[11px] font-medium p-1 px-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all">🚀 開始執行</button>
+                            <button onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-2 px-3.5 rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all shadow-md active:scale-95">
+                                🚀 開始執行
+                            </button>
                         </div>
                     </div>
                 {% endfor %}
@@ -179,8 +201,8 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-white mb-1">{{ task.title }}</h3>
                         <p class="text-xs text-gray-400 leading-relaxed mb-4">{{ task.description or '無描述。' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button onclick="moveTask({{ task.id }}, 'todo')" class="text-[11px] font-medium p-1 px-2.5 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">↩ 退回</button>
-                            <button onclick="moveTask({{ task.id }}, 'done')" class="text-[11px] font-medium p-1 px-2.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all">✓ 回報完成</button>
+                            <button onclick="moveTask({{ task.id }}, 'todo')" class="cursor-pointer text-[11px] font-medium p-2 px-3 rounded-xl bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">↩ 退回</button>
+                            <button onclick="moveTask({{ task.id }}, 'done')" class="cursor-pointer text-[11px] font-medium p-2 px-3 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-md">✓ 回報完成</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -202,7 +224,7 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-gray-400 mb-1 line-through">{{ task.title }}</h3>
                         <p class="text-xs text-gray-500 leading-relaxed mb-4">{{ task.description or '' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button onclick="moveTask({{ task.id }}, 'in_progress')" class="text-[11px] font-medium p-1 px-2.5 rounded-lg bg-white/5 text-gray-500 hover:text-amber-400 transition-all">重启任務</button>
+                            <button onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-2 px-3 rounded-xl bg-white/5 text-gray-500 hover:text-amber-400 transition-all">重启任務</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -212,23 +234,43 @@ EMPLOYEE_HTML = """
     </div>
 
     <script>
+        // 🛠️ 修正全域 moveTask 機制，點擊按鈕直接發送非同步狀態變更
         async function moveTask(taskId, newStatus) {
-            const response = await fetch(`/api/task/${taskId}/status`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus })
-            });
-            if(response.ok) { window.location.reload(); }
+            try {
+                const response = await fetch(`/api/task/${taskId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if(response.ok) { 
+                    window.location.reload(); 
+                } else {
+                    alert('任務變更失敗，請重試！');
+                }
+            } catch (err) {
+                console.error("API Error:", err);
+            }
         }
-        document.getElementById('c-todo').innerText = document.getElementById('col-todo').children.length;
-        document.getElementById('c-progress').innerText = document.getElementById('col-in_progress').children.length;
-        document.getElementById('c-done').innerText = document.getElementById('col-done').children.length;
+        
+        // 🛠️ 安全計數器更新（加上防呆：若節點為空則預設 0，避免 JS 報錯阻塞按鈕）
+        function updateCounters() {
+            const todoCol = document.getElementById('col-todo');
+            const progressCol = document.getElementById('col-in_progress');
+            const doneCol = document.getElementById('col-done');
+            
+            if(todoCol) document.getElementById('c-todo').innerText = todoCol.children.length;
+            if(progressCol) document.getElementById('c-progress').innerText = progressCol.children.length;
+            if(doneCol) document.getElementById('c-done').innerText = doneCol.children.length;
+        }
+        
+        // 頁面載入完成後執行計數
+        window.addEventListener('DOMContentLoaded', updateCounters);
     </script>
 </body>
 </html>
 """
 
-# 3. 後台管理控制中心 (新增員工管理區塊)
+# 3. 後台管理控制中心 (新增員工帳號與看管理面板)
 ADMIN_HTML = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -283,7 +325,6 @@ ADMIN_HTML = """
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         <div class="space-y-6">
-            
             <div class="glass p-6 rounded-2xl shadow-xl h-fit">
                 <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono">
                     <i class="fa-solid fa-circle-plus text-emerald-400"></i> CREATE_NEW_TASK
@@ -344,7 +385,6 @@ ADMIN_HTML = """
                     </button>
                 </form>
             </div>
-
         </div>
 
         <div class="lg:col-span-2 glass p-6 rounded-2xl shadow-xl overflow-x-auto h-fit">
@@ -533,7 +573,7 @@ def create_task():
     conn.close()
     return redirect(url_for('admin_dashboard'))
 
-# 【後台功能】新增員工帳號 🚀 (NEW)
+# 【後台功能】新增員工帳號
 @app.route('/admin/employee/create', methods=['POST'])
 def create_employee():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -550,19 +590,17 @@ def create_employee():
     cur = conn.cursor()
     
     try:
-        # 檢查帳號是否重複
         cur.execute("SELECT id FROM users WHERE username = %s", (username,))
         if cur.fetchone():
             flash(f'建立失敗：帳號名稱 "@{username}" 已經存在了！', 'danger')
         else:
-            # 建立新員工，並做安全密碼雜湊處理
             hashed_password = generate_password_hash(password)
             cur.execute(
                 "INSERT INTO users (username, password, role) VALUES (%s, %s, 'employee')",
                 (username, hashed_password)
             )
             conn.commit()
-            flash(f'成功建立新員工帳號：@{username}！現在可至上方表單直接指派任務給他。', 'success')
+            flash(f'成功建立新員工帳號：@{username}！', 'success')
     except Exception as e:
         conn.rollback()
         flash(f'資料庫寫入錯誤: {str(e)}', 'danger')
