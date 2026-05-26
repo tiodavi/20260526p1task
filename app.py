@@ -106,7 +106,7 @@ LOGIN_HTML = """
 </html>
 """
 
-# 2. 前台員工看板介面
+# 2. 前台員工看板介面 (🛠️ 這裡修正了 JavaScript 避免跳出錯誤彈窗)
 EMPLOYEE_HTML = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -157,7 +157,7 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-white mb-1">{{ task.title }}</h3>
                         <p class="text-xs text-gray-400 leading-relaxed mb-4">{{ task.description or '無描述。' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-2 px-3.5 rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all shadow-md active:scale-95">
+                            <button type="button" onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-2 px-3.5 rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all shadow-md active:scale-95">
                                 🚀 開始執行
                             </button>
                         </div>
@@ -181,8 +181,8 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-white mb-1">{{ task.title }}</h3>
                         <p class="text-xs text-gray-400 leading-relaxed mb-4">{{ task.description or '無描述。' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button onclick="moveTask({{ task.id }}, 'todo')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">↩ 退回</button>
-                            <button onclick="moveTask({{ task.id }}, 'done')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all">✓ 回報完成</button>
+                            <button type="button" onclick="moveTask({{ task.id }}, 'todo')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">↩ 退回</button>
+                            <button type="button" onclick="moveTask({{ task.id }}, 'done')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all">✓ 回報完成</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -204,7 +204,7 @@ EMPLOYEE_HTML = """
                         <h3 class="text-sm font-bold text-gray-400 mb-1 line-through">{{ task.title }}</h3>
                         <p class="text-xs text-gray-500 leading-relaxed mb-4">{{ task.description or '' }}</p>
                         <div class="flex gap-2 border-t border-white/5 pt-3 justify-end">
-                            <button onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-white/5 text-gray-500 hover:text-amber-400 transition-all">重启任務</button>
+                            <button type="button" onclick="moveTask({{ task.id }}, 'in_progress')" class="cursor-pointer text-[11px] font-medium p-1 px-2.5 rounded-lg bg-white/5 text-gray-500 hover:text-amber-400 transition-all">重启任務</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -221,13 +221,18 @@ EMPLOYEE_HTML = """
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: newStatus })
                 });
-                if(response.ok) { 
-                    window.location.reload(); 
-                } else {
-                    alert('任務變更失敗，請重試！');
+                
+                if (response.ok) {
+                    // 只要後端成功回應，立刻刷新頁面
+                    window.location.reload();
+                    return;
                 }
+                
+                // 如果後端回傳非 200 狀態碼才跳提示
+                alert('任務變更失敗，請重試！');
             } catch (err) {
                 console.error("API Error:", err);
+                alert('網路連線異常，請稍後再試！');
             }
         }
         
@@ -424,7 +429,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# 【前台】員工看板路由（🛠️ 優化：員工能看到指派給自己、以及完全未指派公開的任務）
+# 【前台】員工看板路由（允許看到指派給自己、以及完全未指派公開的任務）
 @app.route('/dashboard')
 def employee_dashboard():
     if 'user_id' not in session or session.get('role') != 'employee':
@@ -443,7 +448,7 @@ def employee_dashboard():
     
     return render_template_string(EMPLOYEE_HTML, tasks=tasks)
 
-# 【前台 API】變更任務進度狀態（🛠️ 核心修復點）
+# 【前台 API】變更任務進度狀態
 @app.route('/api/task/<int:task_id>/status', methods=['POST'])
 def update_task_status(task_id):
     if 'user_id' not in session:
@@ -456,11 +461,9 @@ def update_task_status(task_id):
     cur = conn.cursor()
     
     if session.get('role') == 'admin':
-        # 管理者可以改任何人、任何狀態的任務
         cur.execute("UPDATE tasks SET status = %s WHERE id = %s", (new_status, task_id))
     else:
-        # 員工更新任務：
-        # 允許條件：這個任務原本就屬於他 (assigned_to = user_id) OR 這個任務是公開未指派的 (assigned_to IS NULL)
+        # 允許條件：這個任務原本就屬於他 OR 這個任務是公開未指派的 (assigned_to IS NULL)
         # 更新動作：同時把 status 換掉，並且強制把 assigned_to 綁定為當前員工的 ID
         cur.execute('''
             UPDATE tasks 
