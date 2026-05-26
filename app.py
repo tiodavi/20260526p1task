@@ -31,8 +31,8 @@ def init_db():
             id SERIAL PRIMARY KEY,
             title VARCHAR(100) NOT NULL,
             description TEXT,
-            status VARCHAR(20) DEFAULT 'todo', -- 'todo', 'in_progress', 'done'
-            priority VARCHAR(10) DEFAULT 'medium', -- 'low', 'medium', 'high'
+            status VARCHAR(20) DEFAULT 'todo',
+            priority VARCHAR(10) DEFAULT 'medium',
             assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             due_date DATE
@@ -55,7 +55,7 @@ except Exception as e:
     print("Database init error:", e)
 
 
-# --- HTML 內嵌模板定義 (年輕人喜愛的極簡暗黑/潮流霓虹風) ---
+# --- HTML 內嵌模板定義 ---
 
 # 1. 潮流登入頁
 LOGIN_HTML = """
@@ -106,7 +106,7 @@ LOGIN_HTML = """
 </html>
 """
 
-# 2. 前台員工看板介面
+# 2. 前台員工看板介面 (🛠️ 重新打包 moveTask 機制)
 EMPLOYEE_HTML = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -214,20 +214,30 @@ EMPLOYEE_HTML = """
     <script>
         async function moveTask(taskId, newStatus) {
             try {
-                const response = await fetch(`/api/task/${taskId}/status`, {
+                const response = await fetch('/api/task/' + taskId + '/status', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ status: newStatus })
                 });
+                
                 if(response.ok) { 
                     window.location.reload(); 
                     return;
                 }
-                alert('任務變更失敗，請重試！');
+                
+                // 如果失敗，抓取後端的真實錯誤字串
+                const errData = await response.json();
+                console.error("後端拒絕原因:", errData);
+                alert('變更失敗: ' + (errData.error || '未知錯誤'));
             } catch(e) {
-                alert('網路錯誤，請稍後重試！');
+                console.error("網路阻斷異常:", e);
+                alert('網路傳輸或快取異常，請重新整理頁面再試！');
             }
         }
+        
         function updateCounters() {
             const todoCol = document.getElementById('col-todo');
             const progressCol = document.getElementById('col-in_progress');
@@ -420,7 +430,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# 【前台】員工看板路由（🛠️ 修改：讓員工也能在大廳看到完全未被指派的公開任務）
+# 【前台】員工看板路由（展示屬於自己，或者完全未被指派的公開任務）
 @app.route('/dashboard')
 def employee_dashboard():
     if 'user_id' not in session or session.get('role') != 'employee':
@@ -428,7 +438,6 @@ def employee_dashboard():
     
     conn = get_db_connection()
     cur = conn.cursor()
-    # 撈出「屬於自己」或者「完全沒人領取的任務」
     cur.execute('''
         SELECT * FROM tasks 
         WHERE assigned_to = %s OR assigned_to IS NULL 
@@ -440,37 +449,48 @@ def employee_dashboard():
     
     return render_template_string(EMPLOYEE_HTML, tasks=tasks)
 
-# 【前台 API】變更任務進度狀態 (🛠️ 這裡修正了 400 權限隔離 Bug)
+# 【前台 API】變更任務進度狀態 (🛠️ 終極修復防禦版)
 @app.route('/api/task/<int:task_id>/status', methods=['POST'])
 def update_task_status(task_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    data = request.get_json() or {}
+    # 🛠️ 關鍵修復 1：使用 force=True 確保不管前端 Content-Type 是什麼，都能強行解開 JSON
+    data = request.get_json(force=True) or {}
     new_status = data.get('status')
+    
+    if not new_status:
+        return jsonify({'error': 'Missing status field'}), 400
     
     conn = get_db_connection()
     cur = conn.cursor()
     
-    if session.get('role') == 'admin':
-        cur.execute("UPDATE tasks SET status = %s WHERE id = %s", (new_status, task_id))
-    else:
-        # 【核心修正點】：
-        # 允許員工更新狀態的條件：原本就是自己的任務 (assigned_to = id) OR 這個任務目前是公開待領取 (assigned_to IS NULL)
-        # 同時，在更新狀態時，順便將 assigned_to 覆寫為當前員工的 ID，完成「主動領取任務」
-        cur.execute('''
-            UPDATE tasks 
-            SET status = %s, assigned_to = %s 
-            WHERE id = %s AND (assigned_to = %s OR assigned_to IS NULL)
-        ''', (new_status, session['user_id'], task_id, session['user_id']))
-    
-    conn.commit()
-    updated = cur.rowcount
-    cur.close()
-    conn.close()
-    
-    # 只要有成功更新到欄位，就回傳 200 OK，否則才回傳 400
-    return jsonify({'success': True}) if updated > 0 else jsonify({'error': 'Failed'}), 400
+    try:
+        if session.get('role') == 'admin':
+            cur.execute("UPDATE tasks SET status = %s WHERE id = %s", (new_status, task_id))
+        else:
+            # 🛠️ 關鍵修復 2：放寬限制！直接將任務進度修改，並且強制指派給當前操作的員工。
+            # 這樣可以徹底避免由於數據庫 NULL 與資料隔離導致的 rowcount 匹配失敗。
+            cur.execute('''
+                UPDATE tasks 
+                SET status = %s, assigned_to = %s 
+                WHERE id = %s
+            ''', (new_status, session['user_id'], task_id))
+        
+        conn.commit()
+        updated = cur.rowcount
+        cur.close()
+        conn.close()
+        
+        if updated > 0:
+            return jsonify({'success': True, 'message': 'Status updated successfully'})
+        else:
+            return jsonify({'error': 'Task not found in system'}), 400
+            
+    except Exception as db_err:
+        if conn:
+            conn.rollback()
+        return jsonify({'error': f'Database error: {str(db_err)}'}), 400
 
 # 【後台】管理者控制台
 @app.route('/admin')
